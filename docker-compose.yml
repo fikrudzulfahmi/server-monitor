@@ -12,6 +12,7 @@ services:
       PROC_ROOT: /host/proc
       SYS_ROOT: /host/sys
       FS_ROOT_PREFIX: /host/root
+      MOUNTS_FILE: /host/proc/1/mounts
       CUPS_SERVER: 127.0.0.1:631
       CUPS_ACCESS_LOG: /var/log/cups/access_log
       CUPS_ADMIN_SUDO: never

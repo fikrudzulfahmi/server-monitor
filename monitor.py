@@ -19,6 +19,8 @@ PROC = os.environ.get("PROC_ROOT", "/proc").rstrip("/")
 SYS = os.environ.get("SYS_ROOT", "/sys").rstrip("/")
 # prefix untuk statvfs (container: /host/root supaya ukuran disk host yang terbaca)
 FS_PREFIX = os.environ.get("FS_ROOT_PREFIX", "").rstrip("/")
+# tabel mount: di container wajib /host/proc/1/mounts (PID 1 host)
+MOUNTS_FILE = os.environ.get("MOUNTS_FILE", "")
 # path log CUPS (bisa dikosongkan bila CUPS berjalan di container lain)
 ACCESS_LOG = os.environ.get("CUPS_ACCESS_LOG", "/var/log/cups/access_log")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -80,7 +82,7 @@ def mem():
 def disks():
     out, seen = [], set()
     skip = ("tmpfs", "devtmpfs", "squashfs", "overlay", "proc", "sysfs", "cgroup", "cgroup2")
-    with open(PROC + "/mounts") as f:
+    with open(MOUNTS_FILE or (PROC + "/mounts")) as f:
         for line in f:
             dev, mnt, fs = line.split()[:3]
             if fs in skip or not dev.startswith("/dev/") or dev in seen: continue

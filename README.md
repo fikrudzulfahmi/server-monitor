@@ -44,6 +44,7 @@ sudo bash setup-print-control.sh
 | `MON_POWER_DELAY` | `30` | jeda sebelum eksekusi (detik), bisa dibatalkan |
 | `PROC_ROOT` / `SYS_ROOT` | `/proc` / `/sys` | root metrik (Docker: `/host/proc`, `/host/sys`) |
 | `FS_ROOT_PREFIX` | – | prefix `statvfs` (Docker: `/host/root`) |
+| `MOUNTS_FILE` | `$PROC_ROOT/mounts` | tabel mount (Docker: `/host/proc/1/mounts` — `/host/proc/mounts` justru menampilkan mount container) |
 | `CUPS_SERVER` | – | alamat CUPS, mis. `127.0.0.1:631` |
 | `CUPS_ACCESS_LOG` | `/var/log/cups/access_log` | sumber riwayat cetak |
 | `CUPS_ADMIN_SUDO` | `auto` | `auto` (coba langsung lalu sudo) / `never` / `always` |
