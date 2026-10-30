@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server Monitor</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1020">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#0b1020;--card:#141a2e;--line:#232b45;--txt:#e6e9f2;--mut:#8a93ad;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--acc:#38bdf8}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--line)}
+h1{font-size:20px;margin:0}h1 span{color:var(--acc)}.sub{color:var(--mut);font-size:13px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:6px;box-shadow:0 0 8px var(--ok)}
+.dot.off{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+main{padding:20px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));max-width:1400px;margin:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:0 0 12px}
+.big{font-size:38px;font-weight:700}.big small{font-size:16px;color:var(--mut);font-weight:400}
+.bar{height:10px;background:#0e1427;border-radius:6px;overflow:hidden;margin:8px 0}
+.bar>i{display:block;height:100%;width:0;border-radius:6px;transition:width .5s,background .5s}
+.row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0;color:var(--mut)}.row b{color:var(--txt);font-weight:600}
+.wide{grid-column:1/-1}canvas{width:100%;height:120px}
+.cores{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:10px}
+.core{font-size:12px;color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:14px}td{padding:6px 4px;border-bottom:1px solid var(--line)}td:last-child{text-align:right}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);text-align:left;font-weight:600;padding:0 4px 6px;border-bottom:1px solid var(--line)}
+th:last-child{text-align:right}
+.pcols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.ptitle{font-size:13px;margin:0 0 10px;color:var(--txt);font-weight:600}
+@media(max-width:760px){.pcols{grid-template-columns:1fr;gap:18px}}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.st-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;text-align:center}
+.st-metric .big{font-size:32px}
+.st-details{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:14px;justify-content:center;align-items:center}
+.st-info{font-size:14px;padding:4px 0}.st-info .sub{margin-right:6px}.st-info b{color:var(--txt)}
+.st-link{flex-basis:100%;text-align:center;margin-top:4px}
+@media(max-width:600px){.st-grid{grid-template-columns:repeat(2,1fr);gap:12px}.st-metric .big{font-size:26px}}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.b-queue{background:#0ea5e920;color:#38bdf8;border:1px solid #0ea5e940}
+.b-done{background:#22c55e20;color:#22c55e;border:1px solid #22c55e40}
+.b-error{background:#ef444420;color:#ef4444;border:1px solid #ef444440}
+.b-printing{background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40}
+.b-ok{background:#22c55e20;color:#22c55e;border:1px solid #22c55e40}
+.b-off{background:#8a93ad20;color:#8a93ad;border:1px solid #8a93ad40}
+.b-paused{background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40}
+.pbtn{font:inherit;font-size:12px;padding:3px 10px;border-radius:8px;border:1px solid var(--line);background:#0e1427;color:var(--txt);cursor:pointer;margin-left:6px}
+.pbtn:hover{border-color:var(--acc);color:var(--acc)}
+.pbtn.danger:hover{border-color:var(--bad);color:var(--bad)}
+.pbtn:disabled{opacity:.45;cursor:not-allowed}
+.pcard .prow{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
+#pmsg{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#141a2e;border:1px solid var(--line);border-radius:10px;padding:10px 16px;font-size:13px;display:none;max-width:90vw;box-shadow:0 8px 30px #0008}
+#pmsg.err{border-color:var(--bad);color:#fecaca}
+.ptabs{display:flex;gap:8px;margin-bottom:14px}
+.ptab{padding:5px 14px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer;font-size:13px}
+.ptab.active{background:var(--acc);color:#0b1020;border-color:var(--acc);font-weight:600}
+.pprinters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.pcard{background:#0e1427;border:1px solid var(--line);border-radius:10px;padding:10px 16px;font-size:14px}
+.pcard .pname{font-weight:600;margin-bottom:4px}
+#print-empty{color:var(--mut);font-size:13px;text-align:center;padding:20px}
+#pwr-btn{font:inherit;font-size:12px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:#0e1427;color:var(--mut);cursor:pointer;margin-left:10px}
+#pwr-btn:hover{border-color:var(--bad);color:var(--bad)}
+.overlay{position:fixed;inset:0;background:#000a;backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:410px;width:100%;box-shadow:0 20px 60px #000a}
+.modal h3{margin:0 0 10px;font-size:17px}
+.modal p{margin:0 0 14px;font-size:13px;color:var(--mut);line-height:1.55}
+.modal input{width:100%;font:inherit;font-size:14px;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:#0e1427;color:var(--txt);margin-bottom:10px}
+.modal input:focus{outline:none;border-color:var(--acc)}
+#pwr-err{color:#fecaca;font-size:12px;margin:0 0 10px;min-height:15px}
+.mrow{display:flex;gap:10px;justify-content:flex-end}
+.mbtn{font:inherit;font-size:13px;padding:8px 16px;border-radius:9px;border:1px solid var(--line);background:#0e1427;color:var(--txt);cursor:pointer}
+.mbtn.primary{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
+.mbtn:disabled{opacity:.5;cursor:not-allowed}
+#pwr-count{position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#7f1d1d,#b91c1c);color:#fff;font-size:13px;padding:9px 14px;display:none;align-items:center;justify-content:center;gap:14px;z-index:60;flex-wrap:wrap;text-align:center}
+#pwr-count button{font:inherit;font-size:12px;font-weight:600;padding:5px 14px;border-radius:8px;border:1px solid #fff6;background:#ffffff22;color:#fff;cursor:pointer}
+#pwr-count button:hover{background:#ffffff33}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>🖥️ <span id="host">server</span> Monitor</h1><div class="sub" id="osinfo">-</div></div>
+  <div class="sub"><span class="dot" id="dot"></span><span id="status">connecting…</span> · Uptime <b id="uptime">-</b> · <a href="#" id="inst" style="display:none;color:var(--ok);text-decoration:none">⬇ Pasang</a> · <a href="logout" style="color:var(--acc);text-decoration:none">Logout ⎋</a><button id="pwr-btn" onclick="openPower()" title="Matikan server" style="display:none">⏻ Matikan</button></div>
+</header>
+<main>
+  <div class="card"><h2>CPU</h2>
+    <div class="big"><span id="cpu">-</span><small>%</small></div>
+    <div class="bar"><i id="cpubar"></i></div>
+    <div class="row">Model <b id="cpumodel" style="font-size:12px;text-align:right">-</b></div>
+    <div class="row">Load avg (1/5/15) <b id="load">-</b></div>
+    <div class="cores" id="cores"></div>
+  </div>
+  <div class="card"><h2>RAM</h2>
+    <div class="big"><span id="memp">-</span><small>%</small></div>
+    <div class="bar"><i id="membar"></i></div>
+    <div class="row">Terpakai <b id="memused">-</b></div>
+    <div class="row">Sisa <b id="memfree">-</b></div>
+    <div class="row">Total <b id="memtotal">-</b></div>
+    <div class="row">Swap <b id="swap">-</b></div>
+  </div>
+  <div class="card"><h2>Suhu</h2>
+    <div class="big"><span id="tempmax">-</span><small>°C</small></div>
+    <div class="bar"><i id="tempbar"></i></div>
+    <div id="temps"></div>
+  </div>
+  <div class="card"><h2>Jaringan</h2>
+    <div id="ips"></div>
+    <div class="row">⬇ Download <b id="rx">-</b></div>
+    <div class="row">⬆ Upload <b id="tx">-</b></div>
+    <div class="row">Total RX / TX <b id="nettotal">-</b></div>
+  </div>
+  <div class="card wide" id="speedtest-card"><h2>🌐 Speedtest</h2>
+    <div id="st-body">
+      <div class="sub" style="text-align:center;padding:12px 0">Belum pernah dijalankan</div>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <button class="pbtn" id="st-btn" onclick="runSpeedtest()" style="padding:8px 20px;font-size:14px">▶ Jalankan Speedtest</button>
+    </div>
+    <div class="sub" id="st-time" style="text-align:center;margin-top:8px"></div>
+  </div>
+  <div class="card wide"><h2>Storage</h2><div id="disks"></div></div>
+  <div class="card wide"><h2>Riwayat CPU & RAM (5 menit)</h2><canvas id="chart"></canvas>
+    <div class="sub"><span style="color:var(--acc)">■</span> CPU &nbsp; <span style="color:#a78bfa">■</span> RAM</div></div>
+  <div class="card wide"><h2>Proses Teratas</h2>
+    <div class="pcols">
+      <div><h3 class="ptitle">Pemakai CPU Terbesar</h3><table id="procscpu"></table></div>
+      <div><h3 class="ptitle">Pemakai RAM Terbesar</h3><table id="procs"></table></div>
+    </div>
+  </div>
+  <div class="card wide" id="print-card">
+    <h2>🖨️ Status Printer &amp; Cetak</h2>
+    <div class="pprinters" id="printers"></div>
+    <div class="ptabs">
+      <button class="ptab active" onclick="showTab('queue',this)">Antrian</button>
+      <button class="ptab" onclick="showTab('history',this)">Riwayat</button>
+    </div>
+    <div id="tab-queue"></div>
+    <div id="tab-history" style="display:none"></div>
+  </div>
+</main>
+<div id="pwr-count"><span id="pwr-count-txt"></span><button onclick="cancelShutdown()">Batalkan</button></div>
+<div class="overlay" id="pwr-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pwr-title">
+    <h3 id="pwr-title">⏻ Matikan server?</h3>
+    <p>Rekaman CCTV dan seluruh layanan akan berhenti sampai server dinyalakan kembali secara manual.
+       Masukkan password panel untuk konfirmasi — setelah itu masih ada jeda <b id="pwr-delay">30</b> detik yang bisa dibatalkan.</p>
+    <input id="pwr-pass" type="password" placeholder="Password panel" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitPower()">
+    <div id="pwr-err"></div>
+    <div class="mrow">
+      <button class="mbtn" onclick="closePower()">Batal</button>
+      <button class="mbtn primary" id="pwr-ok" onclick="submitPower()">Matikan</button>
+    </div>
+  </div>
+</div>
+<div id="pmsg"></div>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=b=>{const u=['B','KB','MB','GB','TB'];let i=0;while(b>=1024&&i<4){b/=1024;i++}return b.toFixed(i?1:0)+' '+u[i]};
+const col=p=>p<60?'var(--ok)':p<85?'var(--warn)':'var(--bad)';
+const tcol=t=>t<60?'var(--ok)':t<80?'var(--warn)':'var(--bad)';
+const setBar=(el,p,c)=>{el.style.width=Math.min(p,100)+'%';el.style.background=c||col(p)};
+const upt=s=>{const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return (d?d+'h ':'')+h+'j '+m+'m'};
+const hist={cpu:[],mem:[]},MAX=150;
+function draw(){const c=$('chart'),x=c.getContext('2d'),w=c.width=c.clientWidth*devicePixelRatio,h=c.height=120*devicePixelRatio;
+ x.clearRect(0,0,w,h);x.strokeStyle='#232b45';x.lineWidth=1;
+ for(let g=0;g<=4;g++){const y=h*g/4;x.beginPath();x.moveTo(0,y);x.lineTo(w,y);x.stroke()}
+ [['cpu','#38bdf8'],['mem','#a78bfa']].forEach(([k,cl])=>{const a=hist[k];if(a.length<2)return;x.strokeStyle=cl;x.lineWidth=2*devicePixelRatio;x.beginPath();
+  a.forEach((v,i)=>{const px=w-(a.length-1-i)*w/(MAX-1),py=h-v/100*h;i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()})}
+async function tick(){
+ try{const r=await fetch('api/stats',{cache:'no-store'});if(r.status===401){location.href='login';return}const d=await r.json();
+  $('dot').className='dot';$('status').textContent='live · '+new Date(d.time*1000).toLocaleTimeString('id-ID');
+  $('host').textContent=d.hostname;document.title=d.hostname+' · '+d.cpu+'% CPU';
+  $('osinfo').textContent=d.os+' · kernel '+d.kernel;$('uptime').textContent=upt(d.uptime);
+  renderPower(d.power,d.power_delay);
+  const pb=$("pwr-btn");if(pb)pb.style.display=d.power_enabled?"":"none";
+  $('cpu').textContent=d.cpu.toFixed(1);setBar($('cpubar'),d.cpu);
+  $('cpumodel').textContent=d.cpu_model+' ('+d.cores+' core)';$('load').textContent=d.load.map(v=>v.toFixed(2)).join(' / ');
+  $('cores').innerHTML=d.cpu_per.map((p,i)=>`<div class="core">Core ${i} · ${p.toFixed(0)}%<div class="bar"><i style="width:${p}%;background:${col(p)}"></i></div></div>`).join('');
+  const m=d.mem;$('memp').textContent=m.percent.toFixed(1);setBar($('membar'),m.percent);
+  $('memused').textContent=fmt(m.used);$('memfree').textContent=fmt(m.free);$('memtotal').textContent=fmt(m.total);
+  $('swap').textContent=m.swap_total?fmt(m.swap_used)+' / '+fmt(m.swap_total)+' ('+m.swap_percent+'%)':'tidak ada';
+  if(d.temps.length){const mx=Math.max(...d.temps.map(t=>t.temp));$('tempmax').textContent=mx.toFixed(0);setBar($('tempbar'),mx,tcol(mx));
+   $('temps').innerHTML=d.temps.map(t=>`<div class="row">${t.label} <b style="color:${tcol(t.temp)}">${t.temp.toFixed(0)}°C${t.crit?' <span class="sub">/ '+t.crit.toFixed(0)+'</span>':''}</b></div>`).join('')}
+  else{$('tempmax').textContent='N/A';$('temps').innerHTML='<div class="sub">Sensor tidak tersedia</div>'}
+  $('ips').innerHTML=d.ips.map(i=>`<div class="row">IP ${i.iface} <b class="mono">${i.ip}</b></div>`).join('');
+  $('rx').textContent=fmt(d.net.rx)+'/s';$('tx').textContent=fmt(d.net.tx)+'/s';$('nettotal').textContent=fmt(d.net.rx_total)+' / '+fmt(d.net.tx_total);
+  $('disks').innerHTML=d.disks.map(k=>`<div style="margin-bottom:14px"><div class="row"><b>${k.mount}</b><span class="mono">${k.device} · ${k.fs}</span></div>
+   <div class="bar"><i style="width:${k.percent}%;background:${col(k.percent)}"></i></div>
+   <div class="row">Terpakai <b>${fmt(k.used)} (${k.percent}%)</b></div><div class="row">Sisa <b>${fmt(k.free)}</b></div><div class="row">Total <b>${fmt(k.total)}</b></div></div>`).join('');
+  $('procscpu').innerHTML='<thead><tr><th>PID</th><th>Nama</th><th>CPU</th></tr></thead>'+d.procs_cpu.map(p=>`<tr><td class="mono">${p.pid}</td><td>${p.name}</td><td style="color:${p.cpu>85?'var(--bad)':p.cpu>50?'var(--warn)':'var(--txt)'}">${p.cpu}%</td></tr>`).join('');
+  $('procs').innerHTML='<thead><tr><th>PID</th><th>Nama</th><th>RAM</th></tr></thead>'+d.procs.map(p=>`<tr><td class="mono">${p.pid}</td><td>${p.name}</td><td>${fmt(p.rss)}</td></tr>`).join('');
+  hist.cpu.push(d.cpu);hist.mem.push(m.percent);for(const k in hist)if(hist[k].length>MAX)hist[k].shift();draw();
+ }catch(e){$('dot').className='dot off';$('status').textContent='offline'}}
+tick();setInterval(tick,2000);addEventListener('resize',draw);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+// ---- PWA install ----
+let _dp=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();_dp=e;const a=$('inst');if(a)a.style.display='inline'});
+addEventListener('appinstalled',()=>{const a=$('inst');if(a)a.style.display='none';_dp=null});
+document.addEventListener('click',async e=>{
+  if(e.target.id!=='inst')return;e.preventDefault();
+  if(!_dp){alert('Menu browser → “Tambahkan ke Layar Utama” / “Install app”.');return}
+  _dp.prompt();await _dp.userChoice;_dp=null;$('inst').style.display='none';
+});
+
+// ---- Print panel ----
+let _printData={queue:[],history:[],printers:[]};
+const fmtKb=kb=>kb>=1024?`${(kb/1024).toFixed(1)} MB`:`${kb} KB`;
+const badgeHtml=(code,label)=>`<span class="badge b-${code}">${label}</span>`;
+const enc=s=>String(s).replace(/[^\w.@-]/g,'');   // nama printer aman untuk HTML & onclick
+let _pmsgT=null;
+function pmsg(text,err){
+  const el=$('pmsg');el.textContent=text;el.className=err?'err':'';
+  el.style.display='block';clearTimeout(_pmsgT);
+  _pmsgT=setTimeout(()=>el.style.display='none',err?6000:2500);
+}
+async function pact(action,printer,job){
+  const tanya={pause:'Jeda antrian '+printer+'?',resume:'Lanjutkan antrian '+printer+'?',
+               cancel:'Batalkan job #'+job+' di '+printer+'?',
+               cancel_all:'Batalkan SEMUA job di '+printer+'?'}[action];
+  if(!confirm(tanya))return;
+  document.querySelectorAll('.pbtn').forEach(b=>b.disabled=true);
+  try{
+    const r=await fetch('api/print/action',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action,printer,job})});
+    if(r.status===401){location.href='login';return}
+    const d=await r.json();
+    pmsg(d.message,!d.ok);
+  }catch(e){pmsg('Gagal menghubungi server: '+e,true)}
+  document.querySelectorAll('.pbtn').forEach(b=>b.disabled=false);
+  tickPrint();
+}
+function showTab(name,btn){
+  document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  $('tab-queue').style.display=name==='queue'?'':'none';
+  $('tab-history').style.display=name==='history'?'':'none';
+}
+function renderPrint(d){
+  _printData=d;
+  // printers status
+  $('printers').innerHTML=d.printers.map(p=>{
+    const esc=enc(p.name);
+    return `<div class="pcard">
+    <div class="pname">🖨 ${esc}</div>
+    <div>${badgeHtml(p.state_code,p.state)}</div>
+    <div class="prow">
+      ${p.paused
+        ? `<button class="pbtn" onclick="pact('resume','${esc}')">▶ Lanjutkan</button>`
+        : `<button class="pbtn" onclick="pact('pause','${esc}')">⏸ Jeda</button>`}
+      <button class="pbtn danger" onclick="pact('cancel_all','${esc}')">✖ Batalkan semua</button>
+    </div></div>`;}).join('');
+  // antrian
+  if(!d.queue.length){
+    $('tab-queue').innerHTML='<div id="print-empty">✅ Tidak ada dokumen dalam antrian</div>';
+  } else {
+    $('tab-queue').innerHTML=`<table><thead><tr><th style="text-align:left">Job</th><th style="text-align:left">Printer</th><th style="text-align:left">Ukuran</th><th style="text-align:left">Waktu</th><th style="text-align:left">Status</th><th></th></tr></thead><tbody>`+
+    d.queue.map(j=>`<tr>
+      <td class="mono">#${j.id}</td>
+      <td>${enc(j.printer)}</td>
+      <td>${fmtKb(Math.round(j.size_b/1024))}</td>
+      <td>${j.created}</td>
+      <td>${badgeHtml(j.state_code,j.state)}</td>
+      <td><button class="pbtn danger" onclick="pact('cancel','${enc(j.printer)}','${j.id}')">✖ Batalkan</button></td>
+    </tr>`).join('')+'</tbody></table>';
+  }
+  // riwayat
+  if(!d.history.length){
+    $('tab-history').innerHTML='<div id="print-empty">Belum ada riwayat cetak</div>';
+  } else {
+    $('tab-history').innerHTML=`<table><thead><tr><th style="text-align:left">Waktu</th><th style="text-align:left">Printer</th><th style="text-align:left">IP Client</th><th style="text-align:left">Ukuran</th><th></th></tr></thead><tbody>`+
+    d.history.map(j=>`<tr>
+      <td>${j.done}</td>
+      <td>${j.printer}</td>
+      <td class="mono">${j.client_ip}</td>
+      <td>${fmtKb(j.size_kb)}</td>
+      <td>${badgeHtml(j.state_code,j.state)}</td>
+    </tr>`).join('')+'</tbody></table>';
+  }
+}
+async function tickPrint(){
+  try{const r=await fetch('api/print',{cache:'no-store'});
+   if(r.ok) renderPrint(await r.json());
+  }catch(e){}
+}
+tickPrint();setInterval(tickPrint,5000);
+
+// ---- Speedtest panel ----
+let _stPolling=null;
+function renderST(d){
+  if(d.running){
+    $('st-body').innerHTML='<div style="text-align:center;padding:18px 0"><div class="sub">⏳ Speedtest sedang berjalan…</div><div class="bar" style="margin:12px auto;max-width:200px"><i style="width:100%;background:var(--acc);animation:pulse 1.5s infinite"></i></div></div>';
+    $('st-btn').disabled=true;$('st-btn').textContent='⏳ Menunggu…';
+    return;
+  }
+  $('st-btn').disabled=false;$('st-btn').textContent='▶ Jalankan Speedtest';
+  if(d.error){
+    $('st-body').innerHTML='<div style="color:var(--bad);text-align:center;padding:8px">❌ '+d.error+'</div>';
+    if(d.ts) $('st-time').textContent='Terakhir: '+new Date(d.ts*1000).toLocaleString('id-ID');
+    return;
+  }
+  if(!d.data){
+    $('st-body').innerHTML='<div class="sub" style="text-align:center;padding:12px 0">Belum pernah dijalankan</div>';
+    return;
+  }
+  const s=d.data;
+  const dlCol=s.download_mbps>=50?'var(--ok)':s.download_mbps>=10?'var(--warn)':'var(--bad)';
+  const ulCol=s.upload_mbps>=20?'var(--ok)':s.upload_mbps>=5?'var(--warn)':'var(--bad)';
+  $('st-body').innerHTML=`
+    <div class="st-grid">
+      <div class="st-metric"><div class="sub">⬇ Download</div><div class="big" style="color:${dlCol}">${s.download_mbps}<small> Mbps</small></div></div>
+      <div class="st-metric"><div class="sub">⬆ Upload</div><div class="big" style="color:${ulCol}">${s.upload_mbps}<small> Mbps</small></div></div>
+      <div class="st-metric"><div class="sub">Ping</div><div class="big">${s.ping_ms}<small> ms</small></div></div>
+      <div class="st-metric"><div class="sub">Jitter</div><div class="big">${s.jitter_ms}<small> ms</small></div></div>
+    </div>
+    <div class="st-details">
+      ${s.packet_loss!=null?'<div class="st-info"><span class="sub">Packet Loss</span> <b>'+s.packet_loss+'%</b></div>':''}
+      <div class="st-info"><span class="sub">ISP</span> <b>${s.isp}</b></div>
+      <div class="st-info"><span class="sub">Server</span> <b>${s.server}</b></div>
+      ${s.result_url?'<div class="st-info st-link"><a href="'+s.result_url+'" target="_blank" rel="noopener" style="color:var(--acc);font-size:13px">📊 Lihat Hasil di Speedtest.net ↗</a></div>':''}
+    </div>`;
+  if(d.ts) $('st-time').textContent='Terakhir: '+new Date(d.ts*1000).toLocaleString('id-ID');
+}
+async function pollST(){
+  try{const r=await fetch('api/speedtest',{cache:'no-store'});if(r.ok){const d=await r.json();renderST(d);if(!d.running&&_stPolling){clearInterval(_stPolling);_stPolling=null;}}}catch(e){}
+}
+async function runSpeedtest(){
+  try{
+    const r=await fetch('api/speedtest/run',{method:'POST'});
+    const d=await r.json();
+    if(!d.ok){pmsg(d.error,true);return}
+    $('st-btn').disabled=true;$('st-btn').textContent='⏳ Menunggu…';
+    if(_stPolling)clearInterval(_stPolling);
+    _stPolling=setInterval(pollST,2000);
+    pollST();
+  }catch(e){pmsg('Gagal memulai speedtest: '+e,true)}
+}
+pollST();
+
+// ---- Power control (shutdown) ----
+let _pwrDelay=30,_pwrErrShown='';
+function openPower(){
+  const i=$('pwr-pass');i.value='';$('pwr-err').textContent='';
+  const b=$('pwr-ok');b.disabled=false;b.textContent='Matikan';
+  $('pwr-delay').textContent=_pwrDelay;
+  $('pwr-overlay').classList.add('show');
+  setTimeout(()=>i.focus(),60);
+}
+function closePower(){$('pwr-overlay').classList.remove('show')}
+async function submitPower(){
+  const pw=$('pwr-pass').value,b=$('pwr-ok');
+  if(!pw){$('pwr-err').textContent='Password wajib diisi.';return}
+  b.disabled=true;b.textContent='Memproses…';$('pwr-err').textContent='';
+  try{
+    const r=await fetch('api/system/power',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'shutdown',password:pw})});
+    if(r.status===401){location.href='login';return}
+    const d=await r.json().catch(()=>({}));
+    if(!d.ok){
+      $('pwr-err').textContent=d.error||('Gagal ('+r.status+')');
+      b.disabled=false;b.textContent='Matikan';$('pwr-pass').value='';$('pwr-pass').focus();return;
+    }
+    closePower();
+  }catch(e){
+    $('pwr-err').textContent='Gagal menghubungi server: '+e;
+    b.disabled=false;b.textContent='Matikan';
+  }
+}
+async function cancelShutdown(){
+  try{await fetch('api/system/power',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'cancel'})});}catch(e){}
+  renderPower({action:null,seconds_left:0});
+}
+function renderPower(p,delay){
+  if(delay)_pwrDelay=delay;
+  const bar=$('pwr-count');
+  if(p&&p.action){
+    bar.style.display='flex';
+    $('pwr-count-txt').textContent=`Server akan ${p.action==='reboot'?'reboot':'MATI'} dalam ${p.seconds_left} detik — rekaman CCTV akan berhenti.`;
+    return;
+  }
+  bar.style.display='none';
+  if(p&&p.error&&p.error!==_pwrErrShown){_pwrErrShown=p.error;pmsg('Gagal mematikan server: '+p.error,true)}
+  if(!p||!p.error)_pwrErrShown='';
+}
+</script>
+</body>
+</html>

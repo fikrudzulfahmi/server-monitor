@@ -1,0 +1,28 @@
+services:
+  monitor:
+    build: .
+    image: server-monitor:latest
+    container_name: server-monitor
+    restart: unless-stopped
+    network_mode: host      # metrik jaringan + akses CUPS di 127.0.0.1
+    pid: host               # daftar proses host
+    env_file:
+      - ./data/.env
+    environment:
+      PROC_ROOT: /host/proc
+      SYS_ROOT: /host/sys
+      FS_ROOT_PREFIX: /host/root
+      CUPS_SERVER: 127.0.0.1:631
+      CUPS_ACCESS_LOG: /var/log/cups/access_log
+      CUPS_ADMIN_SUDO: never
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+      - /etc/os-release:/etc/os-release:ro
+      - cups_log:/var/log/cups:ro
+    mem_limit: 128m
+
+volumes:
+  cups_log:
+    name: cups_log     # dipakai bersama container CUPS

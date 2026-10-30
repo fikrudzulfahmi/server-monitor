@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login · Server Monitor</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1020">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#0b1020;--card:#141a2e;--line:#232b45;--txt:#e6e9f2;--mut:#8a93ad;--acc:#38bdf8;--bad:#ef4444}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:var(--txt);
+ background:radial-gradient(circle at 20% 20%,#1e3a5f55,transparent 40%),radial-gradient(circle at 80% 80%,#4c1d9555,transparent 40%),var(--bg)}
+.box{width:100%;max-width:370px;margin:20px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:34px 30px;box-shadow:0 20px 60px #0008}
+.logo{font-size:42px;text-align:center}
+h1{text-align:center;font-size:22px;margin:8px 0 4px}h1 span{color:var(--acc)}
+p.sub{text-align:center;color:var(--mut);font-size:13px;margin:0 0 26px}
+label{display:block;font-size:13px;color:var(--mut);margin-bottom:6px}
+.field{position:relative;margin-bottom:16px}
+input{width:100%;padding:12px 14px;background:#0e1427;border:1px solid var(--line);border-radius:10px;color:var(--txt);font-size:15px;outline:none;transition:border .2s}
+input:focus{border-color:var(--acc)}
+.eye{position:absolute;right:10px;top:34px;background:none;border:0;color:var(--mut);cursor:pointer;font-size:16px}
+button.go{width:100%;padding:12px;border:0;border-radius:10px;background:linear-gradient(90deg,#0ea5e9,#6366f1);color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:6px}
+button.go:disabled{opacity:.6;cursor:wait}
+.err{display:none;background:#ef444422;border:1px solid #ef444466;color:#fca5a5;padding:10px;border-radius:10px;font-size:13px;margin-bottom:14px;text-align:center}
+.foot{text-align:center;color:var(--mut);font-size:12px;margin-top:20px}
+</style>
+</head>
+<body>
+<form class="box" id="f" autocomplete="on">
+  <div class="logo">🖥️</div>
+  <h1>Server <span>Monitor</span></h1>
+  <p class="sub">Silakan login untuk melihat dashboard</p>
+  <div class="err" id="err"></div>
+  <div class="field"><label for="u">Username</label><input id="u" name="username" autocomplete="username" required autofocus></div>
+  <div class="field"><label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+    <button type="button" class="eye" id="eye" title="Lihat password">👁</button></div>
+  <button class="go" id="btn">Masuk</button>
+  <div class="foot">🔒 Koneksi aman</div>
+</form>
+<script>
+const f=document.getElementById('f'),err=document.getElementById('err'),btn=document.getElementById('btn'),p=document.getElementById('p');
+document.getElementById('eye').onclick=()=>{p.type=p.type==='password'?'text':'password'};
+f.onsubmit=async e=>{e.preventDefault();err.style.display='none';btn.disabled=true;btn.textContent='Memeriksa…';
+ try{const r=await fetch('login',{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({username:f.username.value,password:p.value})});const d=await r.json();
+  if(d.ok){location.href='./';return}err.textContent=d.error||'Login gagal';err.style.display='block';p.value='';p.focus()}
+ catch(x){err.textContent='Tidak bisa terhubung ke server';err.style.display='block'}
+ btn.disabled=false;btn.textContent='Masuk'};
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
