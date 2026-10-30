@@ -1,5 +1,6 @@
 # Server Monitor
 
+> **Panduan instalasi lengkap (urutan 4 repo):** [`PANDUAN-INSTALASI.md`](https://github.com/fikrudzulfahmi/ngemis-ai-infra/blob/main/docs/PANDUAN-INSTALASI.md)
 Dashboard monitoring server: CPU per-core, RAM, suhu, jaringan, disk, proses teratas,
 speedtest, dan panel antrian printer CUPS. Python standard library saja (tanpa pip),
 satu file `monitor.py` + satu halaman `index.html`.
